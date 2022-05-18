@@ -145,7 +145,7 @@ Inductive step : tm -> tm -> Prop :=
       t1 --> t1' ->
       P t1 t2 --> P t1' t2
   | ST_Plus2 : forall n1 t2 t2',
-      t2 --> t2' ->
+      t2 --> t2' -> 
       P (C n1) t2 --> P (C n1) t2'
 
   where " t '-->' t' " := (step t t').
@@ -198,7 +198,8 @@ Example test_step_2 :
           (C 2)
           (C 4)).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  apply ST_Plus2. apply ST_Plus2. apply ST_PlusConstConst. 
+Qed.
 (** [] *)
 
 End SimpleArith1.
@@ -458,7 +459,18 @@ Inductive step : tm -> tm -> Prop :=
 Theorem step_deterministic :
   deterministic step.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  unfold deterministic. intros.
+  generalize dependent y2.
+  induction H; intros.
+  - (* ST_PlusConstConst *) inversion H0; subst; try solve_by_invert. reflexivity.
+  - (* ST_Plus1 *) inversion H0; subst; try solve_by_inverts 2. 
+    apply IHstep in H4. rewrite H4. reflexivity.
+  - (* ST_Plus2 *) inversion H1; subst; try solve_by_inverts 2. 
+    apply IHstep in H6. rewrite H6. reflexivity.
+Qed.
+   
+
+   
 (** [] *)
 
 (* ================================================================= *)
@@ -1021,7 +1033,22 @@ Lemma test_multistep_4:
         (C 0)
         (C (2 + (0 + 3))).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  eapply multi_step. 
+  {
+    apply ST_Plus2. 
+    apply v_const. 
+    apply ST_Plus2. 
+    apply v_const.
+    apply ST_PlusConstConst.    
+  }
+  eapply multi_step.
+  {
+    apply ST_Plus2. 
+    apply v_const.
+    apply ST_PlusConstConst.    
+  }
+  apply multi_refl.
+Qed.
 (** [] *)
 
 (* ================================================================= *)
@@ -1088,7 +1115,14 @@ Lemma multistep_congr_2 : forall t1 t2 t2',
      t2 -->* t2' ->
      P t1 t2 -->* P t1 t2'.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros. induction H0.
+  - apply multi_refl.
+  - eapply multi_step. apply ST_Plus2.
+    + apply H.
+    + apply H0.
+    + apply IHmulti.
+Qed.
+  
 (** [] *)
 
 (** With these lemmas in hand, the main proof is a straightforward
@@ -1196,10 +1230,14 @@ Theorem eval__multistep : forall t n,
     includes [-->]. *)
 
 Proof.
-  (* intros. induction H.
+  intros. induction H.
   - apply multi_refl.
-  - eapply multi_step. eapply multistep_congr_1 in IHeval1. apply IHeval1. *)
-  (* FILL IN HERE *) Admitted.
+  - eapply multi_trans with (P (C n1) (C n2)). 
+    eapply multi_trans with (P (C n1) t2).
+    + apply multistep_congr_1. assumption.
+    + apply multistep_congr_2. apply v_const. assumption.
+    + apply multi_R. apply ST_PlusConstConst.
+Qed.  
 (** [] *)
 
 (** **** Exercise: 3 stars, advanced (eval__multistep_inf)
@@ -1223,7 +1261,12 @@ Lemma step__eval : forall t t' n,
      t  ==> n.
 Proof.
   intros t t' n Hs. generalize dependent n.
-  (* FILL IN HERE *) Admitted.
+  induction Hs; intros n Hp; inversion Hp; subst.
+  - apply E_Plus; apply E_Const.
+  - apply IHHs in H1. apply E_Plus; assumption. 
+  - apply IHHs in H4. apply E_Plus; assumption.
+Qed.
+
 (** [] *)
 
 (** The fact that small-step reduction implies big-step evaluation is now
@@ -1239,7 +1282,14 @@ Proof.
 Theorem multistep__eval : forall t t',
   normal_form_of t t' -> exists n, t' = C n /\ t ==> n.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  unfold normal_form_of, step_normal_form. intros t t' [H1 H2]. apply nf_same_as_value in H2.
+  induction H1; inversion H2; subst; exists n.
+  - split. reflexivity. apply E_Const.
+  - split. reflexivity.
+    eapply step__eval. apply H.
+    apply IHmulti in H2. destruct H2. destruct H0. inversion H0. subst. apply H2.
+Qed.
+
 (** [] *)
 
 (* ================================================================= *)
