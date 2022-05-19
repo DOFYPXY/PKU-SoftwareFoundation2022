@@ -183,7 +183,12 @@ Hint Unfold stuck : core.
 Example some_term_is_stuck :
   exists t, stuck t.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  exists (scc tru). split.
+  - unfold step_normal_form. unfold not. intros. destruct H. try solve_by_inverts 2.
+  - unfold not. intros. destruct H.
+    + try solve_by_invert.
+    + try solve_by_inverts 2.
+Qed.
 (** [] *)
 
 (** However, although values and normal forms are _not_ the same in
@@ -195,7 +200,11 @@ Proof.
 Lemma value_is_nf : forall t,
   value t -> step_normal_form t.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros. unfold step_normal_form. unfold not. intros. destruct H as [Hb|Hn]; destruct H0.
+  - (*bvalue*) try solve_by_inverts 2.
+  - (*nvalue*) induction H;  try solve_by_invert.
+    + (* ST_Scc *) inversion Hn; subst. contradiction. 
+Qed.
 
 (** (Hint: You will reach a point in this proof where you need to
     use an induction to reason about a term that is known to be a
@@ -473,7 +482,7 @@ Proof.
             cases all at once *)
          try solve_by_invert.
     - (* T_Test *) inversion HE; subst; clear HE.
-      + (* ST_TESTTru *) assumption.
+      + (* ST_TestTru *) assumption.
       + (* ST_TestFls *) assumption.
       + (* ST_Test *) apply T_Test; try assumption.
         apply IHHT1; assumption.
@@ -530,12 +539,47 @@ Definition manual_grade_for_finish_preservation_informal : option (nat*string) :
     each one is doing.  The set-up for this proof is similar, but
     not exactly the same. *)
 
+Lemma nvalue_is_nat: forall t,
+  nvalue t -> |- t \in Nat.
+Proof.
+  intros t Hn. induction Hn.
+  - apply T_Zro.
+  - apply T_Scc. apply IHHn.
+Qed.
+
+Lemma bvalue_is_bool: forall t,
+  bvalue t -> |- t \in Bool.
+Proof.
+  intros t Hn. induction Hn.
+  - apply T_Tru.
+  - apply T_Fls. 
+Qed.
+
 Theorem preservation' : forall t t' T,
   |- t \in T ->
   t --> t' ->
   |- t' \in T.
 Proof with eauto.
-  (* FILL IN HERE *) Admitted.
+  intros t t' T HT HE.
+  generalize dependent T.
+  induction HE;
+        (* every case needs to introduce a couple of things *)
+        intros T HT;
+        (* and we can deal with several impossible
+            cases all at once *)
+        inversion HT; subst.    
+  - (* ST_TestTru *)  assumption.
+  - (* ST_TestFls *)  assumption.
+  - (* ST_Test *)  apply T_Test; eauto.
+  - (* ST_Scc  *)  apply T_Scc; eauto.
+  - (* ST_PrdZro  *)  assumption.
+  - (* ST_PrdScc *)  apply nvalue_is_nat. assumption.
+  - (* ST_Prd *)  apply T_Prd; eauto.
+  - (* ST_IszroZro *)  apply T_Tru.
+  - (* ST_IszroScc *)  apply T_Fls.
+  - (* ST_Iszro *)  apply T_Iszro. eauto.
+Qed.
+
 (** [] *)
 
 (** The preservation theorem is often called _subject reduction_,
