@@ -144,8 +144,29 @@ Theorem progress' : forall t T,
      value t \/ exists t', t --> t'.
 Proof.
   intros t.
-  induction t; intros T Ht; auto.
-  (* FILL IN HERE *) Admitted.
+  induction t; intros T Ht; auto; inversion Ht; subst.
+  - (* tm_var *) discriminate H1.
+  - (* tm_app *)  right. destruct (IHt1 <{T2 -> T}>).
+    + assumption.
+    + (* t1 is a value *) 
+      destruct (IHt2 <{T2}>).
+      * assumption.
+      * (* t2 is a value *) 
+        eapply canonical_forms_fun in H2; [|assumption].
+        destruct H2 as [x [u Ht1]]. subst.
+        exists (<{ [x:=t2]u }>). apply ST_AppAbs. assumption.
+      * (* t2 steps *)
+        destruct H0. exists <{t1 x0}>. apply ST_App2; assumption.
+    + (* t1 steps *)
+      destruct H. exists <{x0 t2}>. apply ST_App1; assumption.
+  - (* tm_if *)
+    right. destruct (IHt1 <{Bool}>); try assumption.
+    + (* t1 is a value*)  
+      eapply canonical_forms_bool in H; [|assumption]; destruct H; subst.
+      * (* true *) exists <{t2}>.  apply ST_IfTrue.
+      * (* false *) exists <{t3}>. apply ST_IfFalse.
+    + (* t1 steps *) destruct H. exists <{ if x0 then t2 else t3}>. apply ST_If. assumption.
+Qed.       
 (** [] *)
 
 (* ################################################################# *)
@@ -459,7 +480,19 @@ Theorem unique_types : forall Gamma e T T',
   Gamma |- e \in T' ->
   T = T'.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros Gamma e. generalize dependent Gamma. induction e; intros; 
+  inversion H; subst; inversion H0; subst; try eauto.
+  - rewrite H3 in H4. inversion H4. rewrite <- H2. reflexivity.
+  - assert (He: <{T2 -> T}> = <{T0 -> T'}>). {
+      apply (IHe1 Gamma); assumption.
+    }  
+    inversion He. rewrite <- H3. reflexivity.
+  - assert (He: <{T0}> = <{T1}>). {
+      apply (IHe (s |-> t; Gamma)); assumption.
+    }
+    rewrite He. reflexivity.
+Qed.
+
 (** [] *)
 
 (* ################################################################# *)

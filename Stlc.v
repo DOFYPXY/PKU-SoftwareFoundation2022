@@ -435,15 +435,57 @@ Check <{[x:=true] x}>.
 Inductive substi (s : tm) (x : string) : tm -> tm -> Prop :=
   | s_var1 :
       substi s x (tm_var x) s
-  (* FILL IN HERE *)
-.
+  | s_var2 : forall y,
+      (eqb_string x y) = false
+      -> substi s x (tm_var y) (tm_var y)
+  | s_abs1 : forall T t1,
+      substi s x <{\x:T, t1}> <{\x:T, t1}> 
+  | s_abs2 : forall y T t1 t1',
+      (eqb_string x y) = false
+      -> substi s x t1 t1'
+      -> substi s x <{\y:T, t1}> <{\y:T, t1'}>
+  | s_app : forall t1 t2 t1' t2',
+      substi s x t1 t1'
+      -> substi s x t2 t2'
+      -> substi s x <{t1 t2}> <{t1' t2'}>
+  | s_true :
+      substi s x <{true}> <{true}>
+  | s_false :
+      substi s x <{false}> <{false}>
+  | s_if : forall t1 t2 t3 t1' t2' t3',
+      substi s x t1 t1'
+      -> substi s x t2 t2'
+      -> substi s x t3 t3'
+      -> substi s x <{if t1 then t2 else t3}> <{if t1' then t2' else t3'}>.
 
 Hint Constructors substi : core.
 
 Theorem substi_correct : forall s x t t',
   <{ [x:=s]t }> = t' <-> substi s x t t'.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros. split; intros.
+  - rewrite <- H. clear H t'. induction t.
+    + unfold subst. destruct (eqb_string x0 s0) eqn:eq.
+      * apply eqb_string_true_iff in eq. rewrite eq. apply s_var1.
+      * apply s_var2. assumption.
+    + apply s_app; assumption.
+    + unfold subst. destruct (eqb_string x0 s0) eqn:eq.
+      * apply eqb_string_true_iff in eq. rewrite eq. apply s_abs1.
+      * apply s_abs2; assumption.   
+    + unfold subst. apply s_true.
+    + unfold subst. apply s_false.
+    + apply s_if; assumption.
+  - induction H; simpl.
+    + rewrite <- eqb_string_refl. reflexivity.
+    + rewrite H. reflexivity.
+    + rewrite <- eqb_string_refl. reflexivity.
+    + rewrite H. rewrite IHsubsti. reflexivity.
+    + rewrite IHsubsti1. rewrite IHsubsti2. reflexivity.
+    + reflexivity.
+    + reflexivity.
+    + rewrite IHsubsti1. rewrite IHsubsti2. rewrite IHsubsti3. reflexivity.
+Qed.
+
 (** [] *)
 
 (* ================================================================= *)
@@ -636,13 +678,19 @@ Lemma step_example5 :
        <{idBBBB idBB idB}>
   -->* idB.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  eapply multi_step.
+    apply ST_App1. apply ST_AppAbs. apply v_abs. simpl.
+  eapply multi_step.
+    apply ST_AppAbs. apply v_abs. simpl.
+  eapply multi_refl.
+Qed.
 
 Lemma step_example5_with_normalize :
        <{idBBBB idBB idB}>
   -->* idB.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  normalize.
+Qed.
 (** [] *)
 
 (* ################################################################# *)
@@ -799,7 +847,16 @@ Example typing_example_3 :
                (y (x z)) \in
       T.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  exists (Ty_Arrow (Ty_Arrow Ty_Bool Ty_Bool) (Ty_Arrow (Ty_Arrow Ty_Bool Ty_Bool) (Ty_Arrow Ty_Bool Ty_Bool))).
+  apply T_Abs.
+  apply T_Abs.
+  apply T_Abs.
+  apply T_App with (T2:=Ty_Bool). 
+    apply T_Var. apply update_neq. intros Contra. discriminate.
+  apply T_App with (T2:=Ty_Bool). 
+    apply T_Var. apply update_neq. intros Contra. discriminate.
+    apply T_Var. auto.
+Qed.
 (** [] *)
 
 (** We can also show that some terms are _not_ typable.  For example,
@@ -841,7 +898,21 @@ Example typing_nonexample_3 :
         empty |-
           \x:S, x x \in T).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros Hc. destruct Hc as [S [T Hc]].
+  inversion Hc; subst; clear Hc.
+  inversion H4; subst; clear H4.
+  inversion H2; subst; clear H2.
+  inversion H5; subst; clear H5.
+  rewrite H1 in H2.
+  inversion H2; subst. clear H1 H2.
+  assert (H: forall Ta Tb:ty,  <{ Ta -> Tb }> <> <{Ta}>).
+  {
+    intros Ta. induction Ta.
+    - intros Tb Contra. discriminate.
+    - intros Tb Contra. inversion Contra. apply (IHTa1 Ta2). apply H1.
+  }
+  apply (H T2 T1). apply H0.
+Qed.
 (** [] *)
 
 End STLC.
