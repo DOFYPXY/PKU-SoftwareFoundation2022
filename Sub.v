@@ -479,26 +479,39 @@ Definition manual_grade_for_subtype_order : option (nat*string) := None.
           S <: T  ->
           S->S   <:  T->T
 
+      _false_
+
       forall S,
            S <: A->A ->
            exists T,
               S = T->T  /\  T <: A
+
+      _false_
 
       forall S T1 T2,
            (S <: T1 -> T2) ->
            exists S1 S2,
               S = S1 -> S2  /\  T1 <: S1  /\  S2 <: T2 
 
+      _true_
+
+
       exists S,
            S <: S->S 
 
+      _false_
+
       exists S,
            S->S <: S  
+
+      _true_
 
       forall S T1 T2,
            S <: T1*T2 ->
            exists S1 S2,
               S = S1*S2  /\  S1 <: T1  /\  S2 <: T2  
+      
+      _true
 *)
 
 (* Do not modify the following line: *)
@@ -508,31 +521,31 @@ Definition manual_grade_for_subtype_instances_tf_2 : option (nat*string) := None
 (** **** Exercise: 1 star, standard (subtype_concepts_tf)
 
     Which of the following statements are true, and which are false?
-    - There exists a type that is a supertype of every other type.
+    - There exists a type that is a supertype of every other type.  True
 
-    - There exists a type that is a subtype of every other type.
+    - There exists a type that is a subtype of every other type.    False
 
-    - There exists a pair type that is a supertype of every other
+    - There exists a pair type that is a supertype of every other   True
       pair type.
 
-    - There exists a pair type that is a subtype of every other
+    - There exists a pair type that is a subtype of every other     False
       pair type.
 
-    - There exists an arrow type that is a supertype of every other
-      arrow type.
+    - There exists an arrow type that is a supertype of every other 
+      arrow type.                                                   False
 
     - There exists an arrow type that is a subtype of every other
-      arrow type.
+      arrow type.                                                   False
 
     - There is an infinite descending chain of distinct types in the
       subtype relation---that is, an infinite sequence of types
       [S0], [S1], etc., such that all the [Si]'s are different and
-      each [S(i+1)] is a subtype of [Si].
+      each [S(i+1)] is a subtype of [Si].                           True
 
     - There is an infinite _ascending_ chain of distinct types in
       the subtype relation---that is, an infinite sequence of types
       [S0], [S1], etc., such that all the [Si]'s are different and
-      each [S(i+1)] is a supertype of [Si].
+      each [S(i+1)] is a supertype of [Si].                         True
 
 *)
 
@@ -606,9 +619,12 @@ Definition manual_grade_for_small_large_2 : option (nat*string) := None.
        exists S,
          empty |- (\p:(A*T). (p.snd) (p.fst)) \in S
 
+    Does not exist.
+
    - What is the _largest_ type [T] that makes the same
      assertion true?
 
+    [A -> Top]
 *)
 
 (* Do not modify the following line: *)
@@ -1033,7 +1049,12 @@ Lemma sub_inversion_Bool : forall U,
 Proof with auto.
   intros U Hs.
   remember <{Bool}> as V.
-  (* FILL IN HERE *) Admitted.
+  induction Hs.
+  - reflexivity.
+  - apply IHHs2 in HeqV as H0. subst...
+  - discriminate.
+  - discriminate.  
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars, standard (sub_inversion_arrow) *)
@@ -1045,7 +1066,16 @@ Proof with eauto.
   intros U V1 V2 Hs.
   remember <{V1->V2}> as V.
   generalize dependent V2. generalize dependent V1.
-  (* FILL IN HERE *) Admitted.
+  induction Hs.
+  - intros. exists V1. exists V2. auto.
+  - intros. 
+    apply IHHs2 in HeqV as [I1 [I2 [H0 [H1 H2]]]]. 
+    apply IHHs1 in H0 as [U1 [U2 [H0' [H1' H2']]]].
+    exists U1. exists U2. 
+    eauto.
+  - intros. discriminate.
+  - intros. inversion HeqV; subst. exists S1. exists S2. eauto.
+Qed. 
 (** [] *)
 
 (* ================================================================= *)
@@ -1452,25 +1482,39 @@ Qed.
                     -----------------------------------    (T_Funny1)
                            Gamma |- t \in T1->T2
 
+      Neither.
+
     - Suppose we add the following reduction rule:
 
                              --------------------         (ST_Funny21)
                              unit --> (\x:Top. x)
+
+      Preservation. A counterexample is:
+
+        <{empty |- unit \in Unit}>, and <{unit --> (\x: Top. x)}>, but <{empty |- (\x:Top. x) \in Unit}> doesn't hold.
+
 
     - Suppose we add the following subtyping rule:
 
                                ----------------          (S_Funny3)
                                Unit <: Top->Top
 
+      Progress. A counterexample is : assume t is a term,
+        <{empty |- unit t \in Top}> holds, but <{unit t}> neither is a value nor is able to reduce.   
+
     - Suppose we add the following subtyping rule:
 
                                ----------------          (S_Funny4)
                                Top->Top <: Unit
 
+      Neither.
+
     - Suppose we add the following reduction rule:
 
                              ---------------------      (ST_Funny5)
                              (unit t) --> (t unit)
+
+      Neither.
 
     - Suppose we add the same reduction rule _and_ a new typing rule:
 
@@ -1480,12 +1524,16 @@ Qed.
                            --------------------------    (T_Funny6)
                            empty |- unit \in Top->Top
 
+      Preservation. A counterexample is : 
+      <{empty |- unit t \in Top}>, and <{(unit t) --> (t unit)}>, but <{t unit}> may not be well-typed.
+
     - Suppose we _change_ the arrow subtyping rule to:
 
                           S1 <: T1 S2 <: T2
                           -----------------              (S_Arrow')
                           S1->S2 <: T1->T2
-
+      Both. 
+      Assume f \in S1->S2, t1 \in T1, <{f t1}> may not be able to reduce, and also may not be well-typed. 
 *)
 
 (* Do not modify the following line: *)
